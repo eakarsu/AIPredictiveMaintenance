@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiPlus, FiActivity, FiThermometer, FiDroplet, FiWind } from 'react-icons/fi';
+import { FiPlus, FiActivity, FiThermometer, FiDroplet, FiWind, FiUpload } from 'react-icons/fi';
 import { getAll, create, update, remove } from '../services/api';
+import api from '../services/api';
 import DetailModal from '../components/DetailModal';
 import FormModal from '../components/FormModal';
 import StatusBadge from '../components/StatusBadge';
@@ -96,6 +97,10 @@ const Sensors = () => {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [showIngest, setShowIngest] = useState(false);
+  const [ingestData, setIngestData] = useState({ sensor_id: '', value: '', unit: '' });
+  const [ingestLoading, setIngestLoading] = useState(false);
+  const [ingestResult, setIngestResult] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -128,6 +133,27 @@ const Sensors = () => {
     loadData();
   };
 
+  const handleIngestSubmit = async (e) => {
+    e.preventDefault();
+    if (!ingestData.sensor_id || ingestData.value === '') return;
+    setIngestLoading(true);
+    setIngestResult(null);
+    try {
+      const res = await api.post('/sensor-readings/ingest', {
+        sensor_id: parseInt(ingestData.sensor_id),
+        value: parseFloat(ingestData.value),
+        unit: ingestData.unit || undefined,
+        timestamp: new Date().toISOString(),
+      });
+      setIngestResult(res.data?.data || res.data);
+      await loadData();
+    } catch (err) {
+      console.error('Ingest error:', err);
+    } finally {
+      setIngestLoading(false);
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
 
   return (
@@ -137,8 +163,74 @@ const Sensors = () => {
           <div className="page-title"><FiActivity style={{ marginRight: 10 }} />Sensor Monitoring</div>
           <div className="page-subtitle">{data.length} sensors registered</div>
         </div>
-        <button className="btn-primary" onClick={handleAdd}><FiPlus size={16} /> Add New Sensor</button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            className="btn-secondary"
+            onClick={() => { setShowIngest(!showIngest); setIngestResult(null); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px' }}
+          >
+            <FiUpload size={14} /> Ingest Reading
+          </button>
+          <button className="btn-primary" onClick={handleAdd}><FiPlus size={16} /> Add New Sensor</button>
+        </div>
       </div>
+
+      {/* Ingest Reading Panel */}
+      {showIngest && (
+        <div className="card" style={{ marginBottom: 20, border: '1px solid #1a73e8' }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 14 }}>Ingest Sensor Reading</div>
+          <form onSubmit={handleIngestSubmit} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ flex: '1 1 180px' }}>
+              <label style={{ display: 'block', fontSize: 11, color: '#607d8b', marginBottom: 4 }}>Sensor *</label>
+              <select
+                value={ingestData.sensor_id}
+                onChange={e => setIngestData(p => ({ ...p, sensor_id: e.target.value }))}
+                style={{ width: '100%', padding: '8px 10px', backgroundColor: '#0f1923', border: '1px solid #2a3a4a', borderRadius: 6, color: '#e0e0e0', fontSize: 13 }}
+                required
+              >
+                <option value="">Select sensor...</option>
+                {data.map(s => <option key={s.id} value={s.id}>{s.name} ({s.unit || '?'})</option>)}
+              </select>
+            </div>
+            <div style={{ flex: '1 1 120px' }}>
+              <label style={{ display: 'block', fontSize: 11, color: '#607d8b', marginBottom: 4 }}>Value *</label>
+              <input
+                type="number"
+                step="any"
+                value={ingestData.value}
+                onChange={e => setIngestData(p => ({ ...p, value: e.target.value }))}
+                placeholder="e.g. 75.3"
+                style={{ width: '100%', padding: '8px 10px', backgroundColor: '#0f1923', border: '1px solid #2a3a4a', borderRadius: 6, color: '#e0e0e0', fontSize: 13 }}
+                required
+              />
+            </div>
+            <div style={{ flex: '1 1 100px' }}>
+              <label style={{ display: 'block', fontSize: 11, color: '#607d8b', marginBottom: 4 }}>Unit</label>
+              <input
+                type="text"
+                value={ingestData.unit}
+                onChange={e => setIngestData(p => ({ ...p, unit: e.target.value }))}
+                placeholder="e.g. °C"
+                style={{ width: '100%', padding: '8px 10px', backgroundColor: '#0f1923', border: '1px solid #2a3a4a', borderRadius: 6, color: '#e0e0e0', fontSize: 13 }}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={ingestLoading}
+              style={{ padding: '9px 18px', backgroundColor: '#1a73e8', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+            >
+              {ingestLoading ? 'Ingesting...' : 'Submit'}
+            </button>
+          </form>
+          {ingestResult && (
+            <div style={{ marginTop: 12, fontSize: 12, color: ingestResult.anomalies_detected > 0 ? '#ff9800' : '#00e676' }}>
+              {ingestResult.anomalies_detected > 0
+                ? `Reading ingested — ANOMALY DETECTED (value outside threshold)`
+                : `Reading ingested successfully.`}
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',

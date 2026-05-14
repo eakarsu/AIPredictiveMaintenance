@@ -2,11 +2,23 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
 
-// GET all equipment
+// GET all equipment (with pagination)
 router.get('/', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM equipment ORDER BY id');
-    res.json({ success: true, data: result.rows, message: 'Equipment retrieved successfully' });
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    const countRes = await pool.query('SELECT COUNT(*) FROM equipment');
+    const total = parseInt(countRes.rows[0].count);
+    const result = await pool.query('SELECT * FROM equipment ORDER BY id LIMIT $1 OFFSET $2', [limit, offset]);
+
+    res.json({
+      success: true,
+      data: result.rows,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      message: 'Equipment retrieved successfully',
+    });
   } catch (error) {
     console.error('Get equipment error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });

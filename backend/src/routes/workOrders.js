@@ -2,11 +2,15 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
 
-// GET all work orders
+// GET all work orders (with pagination)
 router.get('/', async (req, res) => {
   try {
     const { equipment_id, status, priority } = req.query;
-    let query = 'SELECT wo.*, e.name as equipment_name FROM work_orders wo LEFT JOIN equipment e ON wo.equipment_id = e.id';
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    let baseQuery = 'FROM work_orders wo LEFT JOIN equipment e ON wo.equipment_id = e.id';
     const params = [];
     const conditions = [];
 
@@ -22,13 +26,22 @@ router.get('/', async (req, res) => {
       params.push(priority);
       conditions.push(`wo.priority = $${params.length}`);
     }
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
-    query += ' ORDER BY wo.created_at DESC';
+    const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
 
-    const result = await pool.query(query, params);
-    res.json({ success: true, data: result.rows, message: 'Work orders retrieved successfully' });
+    const countRes = await pool.query(`SELECT COUNT(*) ${baseQuery}${whereClause}`, params);
+    const total = parseInt(countRes.rows[0].count);
+
+    params.push(limit, offset);
+    const result = await pool.query(
+      `SELECT wo.*, e.name as equipment_name ${baseQuery}${whereClause} ORDER BY wo.created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
+    res.json({
+      success: true,
+      data: result.rows,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      message: 'Work orders retrieved successfully',
+    });
   } catch (error) {
     console.error('Get work orders error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });

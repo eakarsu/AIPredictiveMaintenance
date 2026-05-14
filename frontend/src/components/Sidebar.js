@@ -4,7 +4,8 @@ import {
   FiGrid, FiCpu, FiActivity, FiTrendingUp, FiCalendar,
   FiAlertTriangle, FiClipboard, FiSearch, FiHeart, FiZap,
   FiPackage, FiFileText, FiDollarSign, FiBarChart2, FiUsers,
-  FiChevronLeft, FiChevronRight, FiSettings
+  FiChevronLeft, FiChevronRight, FiSettings, FiClock, FiGitBranch,
+  FiRadio, FiPieChart, FiShoppingCart, FiLayout
 } from 'react-icons/fi';
 
 const navItems = [
@@ -18,11 +19,38 @@ const navItems = [
   { path: '/failure-analysis', label: 'Failure Analysis', icon: FiSearch, ai: true },
   { path: '/equipment-health', label: 'Equipment Health', icon: FiHeart, ai: true },
   { path: '/anomaly-detection', label: 'Anomaly Detection', icon: FiZap, ai: true },
+  { path: '/ai-history', label: 'AI History', icon: FiClock, ai: true },
+  { path: '/what-if-simulator', label: 'What-If Simulator', icon: FiGitBranch, ai: true },
+  { path: '/sensor-chart', label: 'Sensor Monitor', icon: FiRadio, ai: true },
+  { path: '/cost-forecast', label: 'Cost Forecast', icon: FiPieChart, ai: true },
+  { path: '/parts-optimizer', label: 'Parts Optimizer', icon: FiShoppingCart, ai: true },
+  { path: '/maintenance-window-planner', label: 'Window Planner', icon: FiLayout, ai: true },
+  { path: '/alert-fatigue-reduce', label: 'Alert Fatigue', icon: FiAlertTriangle, ai: true },
+  { path: '/workorder-priority', label: 'Work Order Priority', icon: FiClipboard, ai: true },
+  { path: '/maintenance-recommendation', label: 'Maint. Recommendation', icon: FiCalendar, ai: true },
+  { path: '/failure-root-cause', label: 'Failure Root Cause', icon: FiSearch, ai: true },
+  { path: '/maintenance-roi', label: 'Maintenance ROI', icon: FiDollarSign, ai: true },
+  { path: '/oee-analyzer', label: 'OEE Analyzer', icon: FiBarChart2, ai: true },
+  { path: '/predictive-parts-ordering', label: 'Predictive Parts', icon: FiShoppingCart, ai: true },
   { path: '/spare-parts', label: 'Spare Parts', icon: FiPackage },
   { path: '/maintenance-logs', label: 'Maintenance Logs', icon: FiFileText },
   { path: '/cost-analysis', label: 'Cost Analysis', icon: FiDollarSign, ai: true },
   { path: '/reports', label: 'Reports', icon: FiBarChart2 },
   { path: '/users', label: 'Users', icon: FiUsers },
+  // === Batch 06 Gaps & Frontend Mounts ===
+  { path: '/cf-agentic-maintenance-orchestration', label: 'Agentic maintenance orchestration', icon: '✨' },
+  { path: '/cf-digital-twin-simulation', label: 'Digital twin simulation', icon: '✨' },
+  { path: '/cf-anomaly-streaming', label: 'Anomaly streaming', icon: '✨' },
+  { path: '/cf-predictive-parts-ordering', label: 'Predictive parts ordering', icon: '✨' },
+  { path: '/cf-maintenance-roi-calculator', label: 'Maintenance ROI calculator', icon: '✨' },
+  { path: '/gap-alerts-without-alert', label: 'Alerts without `/alert', icon: '✨' },
+  { path: '/gap-workorders-without-workorder', label: 'Workorders without `/workorder', icon: '✨' },
+  { path: '/gap-no-digital', label: 'No `/digital', icon: '✨' },
+  { path: '/gap-cmms-iot-oee-modules-exist-but-real-third', label: 'CMMS, IoT, OEE modules exist but real third', icon: '✨' },
+  { path: '/gap-no-integration-with-asset-management-purchase-depr', label: 'No integration with asset management (purchase, depreciation)', icon: '✨' },
+  { path: '/gap-no-mobile-app-for-field-technicians-grep-0-react', label: 'No mobile app for field technicians (grep 0 react', icon: '✨' },
+  { path: '/gap-no-webhooks-for-external-systems', label: 'No webhooks for external systems', icon: '✨' },
+  { path: '/gap-limited-notifications-layer', label: 'Limited notifications layer', icon: '✨' }
 ];
 
 const Sidebar = () => {

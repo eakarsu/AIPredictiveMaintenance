@@ -112,4 +112,80 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// POST /api/sensor-readings/ingest - bulk/single ingestion with anomaly detection
+router.post('/ingest', async (req, res) => {
+  try {
+    const body = req.body;
+    const readings = body.readings || [body]; // support both single and array
+
+    if (!readings.length) {
+      return res.status(400).json({ success: false, message: 'No readings provided' });
+    }
+
+    const inserted = [];
+    const anomalies = [];
+
+    for (const reading of readings) {
+      const { sensor_id, value, unit, timestamp } = reading;
+      if (!sensor_id || value === undefined) continue;
+
+      // Fetch sensor thresholds
+      const sensorRes = await pool.query(
+        'SELECT * FROM sensors WHERE id = $1',
+        [sensor_id]
+      );
+      if (sensorRes.rows.length === 0) continue;
+      const sensor = sensorRes.rows[0];
+
+      const ts = timestamp ? new Date(timestamp) : new Date();
+      let isAnomaly = false;
+
+      if (sensor.min_threshold !== null && value < sensor.min_threshold) isAnomaly = true;
+      if (sensor.max_threshold !== null && value > sensor.max_threshold) isAnomaly = true;
+
+      // Insert reading
+      const insertRes = await pool.query(
+        `INSERT INTO sensor_readings (sensor_id, value, timestamp, is_anomaly)
+         VALUES ($1, $2, $3, $4) RETURNING *`,
+        [sensor_id, value, ts, isAnomaly]
+      );
+      const insertedRow = insertRes.rows[0];
+      inserted.push(insertedRow);
+
+      // Update sensor last_reading
+      await pool.query(
+        'UPDATE sensors SET last_reading = $1, last_reading_at = $2 WHERE id = $3',
+        [value, ts, sensor_id]
+      );
+
+      // Create alert if anomaly
+      if (isAnomaly && sensor.equipment_id) {
+        try {
+          await pool.query(
+            `INSERT INTO alerts (equipment_id, sensor_id, type, severity, message, status)
+             VALUES ($1, $2, 'anomaly', 'warning', $3, 'active')`,
+            [
+              sensor.equipment_id,
+              sensor_id,
+              `Sensor ${sensor.name} reading ${value}${unit || sensor.unit || ''} is outside normal range [${sensor.min_threshold}, ${sensor.max_threshold}]`,
+            ]
+          );
+          anomalies.push({ sensor_id, value, sensor_name: sensor.name });
+        } catch (alertErr) {
+          console.error('Alert creation error:', alertErr.message);
+        }
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      data: { inserted: inserted.length, anomalies_detected: anomalies.length, anomalies },
+      message: `Ingested ${inserted.length} reading(s), ${anomalies.length} anomaly/ies detected`,
+    });
+  } catch (error) {
+    console.error('Ingest sensor readings error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Internal server error' });
+  }
+});
+
 module.exports = router;

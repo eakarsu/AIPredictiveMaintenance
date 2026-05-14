@@ -103,4 +103,47 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// POST /api/maintenance-schedules/check-overdue
+router.post('/check-overdue', async (req, res) => {
+  try {
+    const overdueResult = await pool.query(
+      `SELECT ms.*, e.name as equipment_name
+       FROM maintenance_schedules ms
+       LEFT JOIN equipment e ON ms.equipment_id = e.id
+       WHERE ms.next_due <= NOW() AND ms.status != 'completed'
+       ORDER BY ms.next_due ASC`
+    );
+
+    const created = [];
+    for (const schedule of overdueResult.rows) {
+      try {
+        await pool.query(
+          `INSERT INTO alerts (equipment_id, type, severity, message, status)
+           VALUES ($1, 'maintenance', 'warning', $2, 'active')`,
+          [
+            schedule.equipment_id,
+            `Overdue maintenance: "${schedule.title}" was due on ${new Date(schedule.next_due).toLocaleDateString()} for ${schedule.equipment_name || 'equipment'}`,
+          ]
+        );
+        created.push(schedule.title);
+      } catch (alertErr) {
+        console.error('Alert insert error:', alertErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        overdue_count: overdueResult.rows.length,
+        schedules: overdueResult.rows,
+        alerts_created: created.length,
+      },
+      message: `Found ${overdueResult.rows.length} overdue schedule(s). Created ${created.length} alert(s).`,
+    });
+  } catch (error) {
+    console.error('Check overdue error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Internal server error' });
+  }
+});
+
 module.exports = router;

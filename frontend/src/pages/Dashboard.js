@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FiCpu, FiActivity, FiAlertTriangle, FiClipboard,
-  FiHeart, FiDollarSign, FiArrowRight
+  FiHeart, FiDollarSign, FiArrowRight, FiZap
 } from 'react-icons/fi';
-import { getAll } from '../services/api';
+import { getAll, create } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatusBadge from '../components/StatusBadge';
 
@@ -43,6 +43,8 @@ const Dashboard = () => {
   const [alerts, setAlerts] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [autoEvalLoading, setAutoEvalLoading] = useState(false);
+  const [autoEvalResult, setAutoEvalResult] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -93,6 +95,20 @@ const Dashboard = () => {
     }
   };
 
+  const handleAutoEvaluate = async () => {
+    setAutoEvalLoading(true);
+    setAutoEvalResult(null);
+    try {
+      const res = await create('alerts/auto-evaluate', {});
+      setAutoEvalResult(res.data?.data || res.data);
+      await loadData();
+    } catch (err) {
+      console.error('Auto-evaluate error:', err);
+    } finally {
+      setAutoEvalLoading(false);
+    }
+  };
+
   if (loading) return <LoadingSpinner text="Loading dashboard..." />;
 
   return (
@@ -102,7 +118,31 @@ const Dashboard = () => {
           <div className="page-title">Dashboard</div>
           <div className="page-subtitle">AI Predictive Maintenance Overview</div>
         </div>
+        <button
+          className="btn-primary"
+          onClick={handleAutoEvaluate}
+          disabled={autoEvalLoading}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 18px', backgroundColor: '#ff9800', color: '#fff',
+            border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+          }}
+        >
+          <FiZap size={15} />
+          {autoEvalLoading ? 'Evaluating...' : 'Auto-Evaluate Alerts'}
+        </button>
       </div>
+      {autoEvalResult && (
+        <div style={{
+          backgroundColor: '#1a2332', border: '1px solid #ff9800', borderRadius: 10,
+          padding: '12px 18px', marginBottom: 16, color: '#ffc107', fontSize: 13,
+        }}>
+          Auto-evaluation complete: {autoEvalResult.alerts_created || 0} alert(s) created.
+          {autoEvalResult.details?.length > 0 && (
+            <span> ({autoEvalResult.details.map(d => d.equipment || d.sensor).join(', ')})</span>
+          )}
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div style={{
