@@ -37,6 +37,7 @@ const navItems = [
   { path: '/cost-analysis', label: 'Cost Analysis', icon: FiDollarSign, ai: true },
   { path: '/reports', label: 'Reports', icon: FiBarChart2 },
   { path: '/users', label: 'Users', icon: FiUsers },
+  { path: '/custom-views', label: 'PdM Views', icon: FiLayout },
   // === Batch 06 Gaps & Frontend Mounts ===
   { path: '/cf-agentic-maintenance-orchestration', label: 'Agentic maintenance orchestration', icon: '✨' },
   { path: '/cf-digital-twin-simulation', label: 'Digital twin simulation', icon: '✨' },

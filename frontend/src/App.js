@@ -33,6 +33,7 @@ import FailureRootCause from './pages/FailureRootCause';
 import MaintenanceROI from './pages/MaintenanceROI';
 import OEEAnalyzer from './pages/OEEAnalyzer';
 import PredictivePartsOrdering from './pages/PredictivePartsOrdering';
+import CustomViewsPage from './pages/CustomViewsPage';
 import './App.css';
 
 // // === Batch 06 Gaps & Frontend Mounts ===
@@ -100,6 +101,7 @@ const App = () => (
           <Route path="/maintenance-roi" element={<MaintenanceROI />} />
           <Route path="/oee-analyzer" element={<OEEAnalyzer />} />
           <Route path="/predictive-parts-ordering" element={<PredictivePartsOrdering />} />
+          <Route path="/custom-views" element={<CustomViewsPage />} />
         </Route>
       
           {/* // === Batch 06 Gaps & Frontend Mounts === */}

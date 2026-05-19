@@ -55,6 +55,9 @@ app.use('/api/dashboard', auth, dashboardRoutes);
 app.use('/api/ai', auth, aiRoutes);
 app.use('/api/equipment', auth, sensorIngestRoutes);
 
+// Custom Views (4 endpoints) — mounted BEFORE 404 handler
+app.use('/api/custom-views', auth, require('./routes/customViews'));
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
