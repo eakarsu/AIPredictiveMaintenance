@@ -34,6 +34,7 @@ import MaintenanceROI from './pages/MaintenanceROI';
 import OEEAnalyzer from './pages/OEEAnalyzer';
 import PredictivePartsOrdering from './pages/PredictivePartsOrdering';
 import CustomViewsPage from './pages/CustomViewsPage';
+import LubricationRouteCompliance from './pages/LubricationRouteCompliance';
 import './App.css';
 
 // // === Batch 06 Gaps & Frontend Mounts ===
@@ -50,6 +51,9 @@ import GapNoIntegrationWithAssetManagementPurchaseDeprPage from './pages/GapNoIn
 import GapNoMobileAppForFieldTechniciansGrep0ReactPage from './pages/GapNoMobileAppForFieldTechniciansGrep0ReactPage';
 import GapNoWebhooksForExternalSystemsPage from './pages/GapNoWebhooksForExternalSystemsPage';
 import GapLimitedNotificationsLayerPage from './pages/GapLimitedNotificationsLayerPage';
+import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
+import CodexOperationsFeature from './pages/CodexOperationsFeature';
+
 const ProtectedLayout = () => {
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}><LoadingSpinner /></div>;
@@ -71,6 +75,9 @@ const App = () => (
   <BrowserRouter>
     <AuthProvider>
       <Routes>
+        <Route path="/codex/custom-viz" element={<CodexCustomVizFeature />} />
+        <Route path="/codex/operations" element={<CodexOperationsFeature />} />
+
         <Route path="/login" element={<Login />} />
         <Route element={<ProtectedLayout />}>
           <Route path="/" element={<Dashboard />} />
@@ -102,6 +109,7 @@ const App = () => (
           <Route path="/oee-analyzer" element={<OEEAnalyzer />} />
           <Route path="/predictive-parts-ordering" element={<PredictivePartsOrdering />} />
           <Route path="/custom-views" element={<CustomViewsPage />} />
+          <Route path="/lubrication-route-compliance" element={<LubricationRouteCompliance />} />
         </Route>
       
           {/* // === Batch 06 Gaps & Frontend Mounts === */}

@@ -57,6 +57,7 @@ app.use('/api/equipment', auth, sensorIngestRoutes);
 
 // Custom Views (4 endpoints) — mounted BEFORE 404 handler
 app.use('/api/custom-views', auth, require('./routes/customViews'));
+app.use('/api/lubrication-route-compliance', auth, require('./routes/lubricationRouteCompliance'));
 
 // 404 handler
 app.use((req, res) => {

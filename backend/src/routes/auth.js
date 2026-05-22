@@ -82,4 +82,20 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// GET /api/auth/me — decode JWT and return user info (added to keep AuthContext.fetchUser happy)
+router.get('/me', (req, res) => {
+  try {
+    const h = req.headers.authorization || '';
+    const t = h.startsWith('Bearer ') ? h.slice(7) : h;
+    if (!t) return res.status(401).json({ success: false, message: 'No token' });
+    const decoded = jwt.verify(t, process.env.JWT_SECRET || 'default_jwt_secret');
+    return res.json({
+      success: true,
+      data: { id: decoded.id, email: decoded.email, name: decoded.name, role: decoded.role },
+    });
+  } catch (e) {
+    return res.status(401).json({ success: false, message: 'Invalid token' });
+  }
+});
+
 module.exports = router;
