@@ -36,6 +36,8 @@ import PredictivePartsOrdering from './pages/PredictivePartsOrdering';
 import CustomViewsPage from './pages/CustomViewsPage';
 import LubricationRouteCompliance from './pages/LubricationRouteCompliance';
 import './App.css';
+import MissingFeaturesHub from './pages/MissingFeaturesHub';
+import ProductionReadiness from './pages/ProductionReadiness';
 
 // // === Batch 06 Gaps & Frontend Mounts ===
 import CFAgenticMaintenanceOrchestrationPage from './pages/CFAgenticMaintenanceOrchestrationPage';
@@ -126,7 +128,9 @@ const App = () => (
           <Route path="/gap-no-mobile-app-for-field-technicians-grep-0-react" element={<GapNoMobileAppForFieldTechniciansGrep0ReactPage />} />
           <Route path="/gap-no-webhooks-for-external-systems" element={<GapNoWebhooksForExternalSystemsPage />} />
           <Route path="/gap-limited-notifications-layer" element={<GapLimitedNotificationsLayerPage />} />
-        </Routes>
+                <Route path="/missing-features" element={<MissingFeaturesHub />} />
+              <Route path="/production-readiness" element={<ProductionReadiness />} />
+      </Routes>
     </AuthProvider>
   </BrowserRouter>
 );
