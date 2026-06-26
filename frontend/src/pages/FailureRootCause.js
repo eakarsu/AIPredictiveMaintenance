@@ -1,3 +1,4 @@
+import AIResultDisplay from '../components/AIResultDisplay';
 import React, { useState, useEffect } from 'react';
 import { FiSearch, FiPlay, FiAlertTriangle } from 'react-icons/fi';
 import api, { getAll } from '../services/api';
@@ -187,8 +188,8 @@ const FailureRootCause = () => {
 
           {!result.primary_root_cause && !result.five_why_analysis && (
             <div style={{ background: '#fff', border: '1px solid #e5e9ef', borderRadius: 12, padding: 20 }}>
-              <p style={{ fontWeight: 600, marginTop: 0 }}>Raw Response</p>
-              <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, color: '#37474f' }}>{JSON.stringify(result, null, 2)}</pre>
+              <p style={{ fontWeight: 600, marginTop: 0 }}>AI Analysis</p>
+              <AIResultDisplay result={result} />
             </div>
           )}
         </div>

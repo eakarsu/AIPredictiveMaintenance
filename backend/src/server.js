@@ -47,6 +47,7 @@ app.use('/api/maintenance-schedules', auth, maintenanceSchedulesRoutes);
 app.use('/api/alerts', auth, alertsRoutes);
 app.use('/api/work-orders', auth, workOrdersRoutes);
 app.use('/api/failure-analysis', auth, failureAnalysisRoutes);
+app.use('/api/failure-analyses', auth, failureAnalysisRoutes);
 app.use('/api/spare-parts', auth, sparePartsRoutes);
 app.use('/api/maintenance-logs', auth, maintenanceLogsRoutes);
 app.use('/api/cost-records', auth, costRecordsRoutes);
@@ -58,18 +59,6 @@ app.use('/api/equipment', auth, sensorIngestRoutes);
 // Custom Views (4 endpoints) — mounted BEFORE 404 handler
 app.use('/api/custom-views', auth, require('./routes/customViews'));
 app.use('/api/lubrication-route-compliance', auth, require('./routes/lubricationRouteCompliance'));
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: 'Route not found' });
-});
-
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ success: false, message: 'Internal server error' });
-});
-
 
 // === Custom Feature Mounts (batch_06) ===
 app.use('/api/cf-agentic-maintenance-orchestration', require('./routes/customFeat01_AgenticMaintenanceOrchestration'));
@@ -88,6 +77,17 @@ app.use('/api/gap-no-integration-with-asset-management-purchase-depr', require('
 app.use('/api/gap-no-mobile-app-for-field-technicians-grep-0-react', require('./routes/gapFeat_no_mobile_app_for_field_technicians_grep_0_react'));
 app.use('/api/gap-no-webhooks-for-external-systems', require('./routes/gapFeat_no_webhooks_for_external_systems'));
 app.use('/api/gap-limited-notifications-layer', require('./routes/gapFeat_limited_notifications_layer'));
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found' });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ success: false, message: 'Internal server error' });
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

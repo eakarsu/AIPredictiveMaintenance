@@ -1,3 +1,4 @@
+import AIResultDisplay from '../components/AIResultDisplay';
 import React, { useState } from 'react';
 import { FiCalendar, FiPlay, FiAlertTriangle, FiClock, FiCheckCircle } from 'react-icons/fi';
 import api from '../services/api';
@@ -202,11 +203,10 @@ const MaintenanceWindowPlanner = () => {
             </div>
           )}
 
-          {/* Raw JSON fallback */}
           {!result.scheduled_windows && !result.immediate_actions && (
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
               <h2 className="font-semibold text-gray-800 mb-3">AI Plan</h2>
-              <pre className="text-sm text-gray-600 whitespace-pre-wrap overflow-auto">{JSON.stringify(result, null, 2)}</pre>
+              <AIResultDisplay result={result} />
             </div>
           )}
         </div>

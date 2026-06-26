@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { apiFetch } from '../services/apiFetch';
 
 const emptyForm = { assetRoute: '', technician: '', pointsDue: 0, pointsCompleted: 0, lubricant: '', exception: '', status: 'open' };
 
@@ -8,7 +9,7 @@ export default function LubricationRouteCompliance() {
   const [form, setForm] = useState(emptyForm);
 
   const load = async () => {
-    const res = await fetch('/api/lubrication-route-compliance', {
+    const res = await apiFetch('/api/lubrication-route-compliance', {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     });
     const data = await res.json();
@@ -20,7 +21,7 @@ export default function LubricationRouteCompliance() {
 
   const submit = async (event) => {
     event.preventDefault();
-    await fetch('/api/lubrication-route-compliance', {
+    await apiFetch('/api/lubrication-route-compliance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
       body: JSON.stringify(form)

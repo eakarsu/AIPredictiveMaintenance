@@ -286,6 +286,78 @@ const renderJsonResult = (obj) => {
   );
 };
 
+const parseJsonString = (value) => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const candidate = fenced ? fenced[1].trim() : trimmed;
+
+  try {
+    return JSON.parse(candidate);
+  } catch (_) {
+    try {
+      const objectMatch = candidate.match(/\{[\s\S]*\}/);
+      if (objectMatch) return JSON.parse(objectMatch[0]);
+    } catch (_) {}
+  }
+  return null;
+};
+
+const getPrimaryAIContent = (result) => {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return null;
+
+  const candidates = [
+    result.analysis,
+    result.ai_analysis,
+    result.ai_result,
+    result.result,
+    result.output,
+    result.response,
+    result.data?.analysis,
+    result.data?.result,
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate !== undefined && candidate !== null && candidate !== '') return candidate;
+  }
+  return null;
+};
+
+const metaLabels = {
+  feature: 'Feature',
+  model: 'Model',
+  tokens_used: 'Tokens',
+  tokensUsed: 'Tokens',
+  id: 'Run ID',
+};
+
+const ResultMetadata = ({ result }) => {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return null;
+  const entries = Object.entries(metaLabels)
+    .map(([key, label]) => [label, result[key]])
+    .filter(([, value]) => value !== undefined && value !== null && value !== '');
+
+  if (entries.length === 0) return null;
+
+  return (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+      {entries.map(([label, value]) => (
+        <span key={label} style={{
+          display: 'inline-flex', gap: 6, alignItems: 'center',
+          padding: '6px 10px', borderRadius: 999,
+          backgroundColor: '#1a73e818', color: '#8ab4f8',
+          border: '1px solid #1a73e840', fontSize: 12, fontWeight: 700,
+        }}>
+          <span style={{ color: '#8899aa', fontWeight: 600 }}>{label}</span>
+          <span>{String(value)}</span>
+        </span>
+      ))}
+    </div>
+  );
+};
+
 const AIResultDisplay = ({ result, loading }) => {
   if (loading) {
     return (
@@ -321,6 +393,28 @@ const AIResultDisplay = ({ result, loading }) => {
 
   // Handle object results (parsed JSON)
   if (typeof result === 'object' && !Array.isArray(result)) {
+    const primaryContent = getPrimaryAIContent(result);
+    const parsedPrimary = parseJsonString(primaryContent);
+
+    if (parsedPrimary && typeof parsedPrimary === 'object') {
+      return (
+        <div>
+          <ResultMetadata result={result} />
+          {renderJsonResult(parsedPrimary)}
+        </div>
+      );
+    }
+
+    if (typeof primaryContent === 'string' && primaryContent.trim()) {
+      const sections = parseAIResponse(primaryContent);
+      return (
+        <div>
+          <ResultMetadata result={result} />
+          {sections.map((s, i) => <Section key={i} section={s} />)}
+        </div>
+      );
+    }
+
     // Check if the object has structured keys that look like an AI JSON response
     // (i.e., not just { analysis: "text string", score: 5 } wrappers)
     const wrapperKeys = ['analysis', 'result', 'data', 'message', 'score'];

@@ -94,6 +94,9 @@ const Sidebar = () => {
         {navItems.map(item => {
           const active = location.pathname === item.path;
           const Icon = item.icon;
+          const iconNode = typeof Icon === 'function'
+            ? <Icon size={18} style={{ flexShrink: 0 }} />
+            : <span style={{ width: 18, flexShrink: 0, textAlign: 'center', lineHeight: '18px' }}>{Icon}</span>;
           return (
             <div
               key={item.path}
@@ -115,7 +118,7 @@ const Sidebar = () => {
               }}
               title={collapsed ? item.label : ''}
             >
-              <Icon size={18} style={{ flexShrink: 0 }} />
+              {iconNode}
               {!collapsed && (
                 <span style={{
                   fontSize: 13, fontWeight: active ? 600 : 400, whiteSpace: 'nowrap',

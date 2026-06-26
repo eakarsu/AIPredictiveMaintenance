@@ -2,6 +2,8 @@
 // Custom Feature: Predictive parts ordering
 // Predictive parts ordering: AI predicts parts failure; auto-orders replacements to arrive before failure; prevents emergency expedites and downtime
 import React, { useState } from 'react';
+import { apiFetch } from '../services/apiFetch';
+import AIResultDisplay from '../components/AIResultDisplay';
 
 export default function CFPredictivePartsOrderingPage() {
   const [input, setInput] = useState('');
@@ -36,7 +38,7 @@ export default function CFPredictivePartsOrderingPage() {
     setResult(null);
     try {
       const token = (typeof localStorage !== 'undefined' && localStorage.getItem('token')) || '';
-      const res = await fetch('/api/cf-predictive-parts-ordering/run', {
+      const res = await apiFetch('/api/cf-predictive-parts-ordering/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ input }),
@@ -92,8 +94,8 @@ export default function CFPredictivePartsOrderingPage() {
       )}
       {result && (
         <div style={{ background: '#0b1220', padding: 16, borderRadius: 8 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Result</h3>
-          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: 12, color: '#d1d5db' }}>{JSON.stringify(result, null, 2)}</pre>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>AI Result</h3>
+          <AIResultDisplay result={result} />
         </div>
       )}
     </div>

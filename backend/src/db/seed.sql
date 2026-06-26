@@ -1,20 +1,20 @@
 -- Seed Users (password is 'password123' for all users)
 INSERT INTO users (email, password_hash, name, role) VALUES
-('admin@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'James Carter', 'admin'),
-('manager@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'Sarah Mitchell', 'manager'),
-('tech1@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'Mike Johnson', 'technician'),
-('tech2@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'Emily Chen', 'technician'),
-('tech3@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'David Park', 'technician'),
-('engineer1@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'Lisa Wang', 'engineer'),
-('engineer2@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'Robert Garcia', 'engineer'),
-('supervisor@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'Angela Brooks', 'supervisor'),
-('analyst@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'Tom Wilson', 'analyst'),
-('operator1@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'Nancy Davis', 'operator'),
-('operator2@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'Carlos Hernandez', 'operator'),
-('maintenance@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'Kevin Brown', 'maintenance_lead'),
-('safety@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'Jennifer Lee', 'safety_officer'),
-('planner@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'Daniel Taylor', 'planner'),
-('director@factory.com', '$2a$10$8KzaNdKIMyOkASCFUOn7IO6NyX/JqsVFyXaEjJJMwqWeBsTIxERYa', 'Patricia Anderson', 'director');
+('admin@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'James Carter', 'admin'),
+('manager@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'Sarah Mitchell', 'manager'),
+('tech1@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'Mike Johnson', 'technician'),
+('tech2@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'Emily Chen', 'technician'),
+('tech3@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'David Park', 'technician'),
+('engineer1@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'Lisa Wang', 'engineer'),
+('engineer2@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'Robert Garcia', 'engineer'),
+('supervisor@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'Angela Brooks', 'supervisor'),
+('analyst@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'Tom Wilson', 'analyst'),
+('operator1@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'Nancy Davis', 'operator'),
+('operator2@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'Carlos Hernandez', 'operator'),
+('maintenance@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'Kevin Brown', 'maintenance_lead'),
+('safety@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'Jennifer Lee', 'safety_officer'),
+('planner@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'Daniel Taylor', 'planner'),
+('director@factory.com', '$2a$10$zLO.8O4r3Ai4iYnV1MVaH.TSg2ZoRS4on4jPS4KP9kpnIv.uj4142', 'Patricia Anderson', 'director');
 
 -- Seed Equipment
 INSERT INTO equipment (name, type, location, status, manufacturer, model_number, install_date, last_maintenance, next_maintenance, health_score) VALUES
