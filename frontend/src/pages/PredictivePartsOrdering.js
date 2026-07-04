@@ -7,6 +7,8 @@ const PredictivePartsOrdering = () => {
   const [equipmentId, setEquipmentId] = useState('');
   const [leadBuffer, setLeadBuffer] = useState('14');
   const [lookahead, setLookahead] = useState('90');
+  const [createOrders, setCreateOrders] = useState(true);
+  const [dispatchOrders, setDispatchOrders] = useState(false);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,6 +23,8 @@ const PredictivePartsOrdering = () => {
         equipment_id: equipmentId ? Number(equipmentId) : undefined,
         lead_time_days_buffer: Number(leadBuffer) || 14,
         lookahead_days: Number(lookahead) || 90,
+        create_procurement_orders: createOrders,
+        dispatch_orders: dispatchOrders,
       };
       const res = await api.post('/ai/predictive-parts-ordering', payload);
       setResult(res.data?.data || res.data);
@@ -39,6 +43,7 @@ const PredictivePartsOrdering = () => {
   const orderNow = parsed.order_now || [];
   const orderSoon = parsed.order_soon || [];
   const watchlist = parsed.watchlist || [];
+  const procurementOrders = result?.procurement_orders || [];
 
   const inputStyle = { width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #2a3a4a', backgroundColor: '#0f1923', color: '#e0e0e0', fontSize: 14 };
   const labelStyle = { display: 'block', fontSize: 13, color: '#8899aa', marginBottom: 8 };
@@ -49,10 +54,10 @@ const PredictivePartsOrdering = () => {
         <div>
           <div className="page-title">
             <FiShoppingCart style={{ marginRight: 10 }} />
-            Predictive Parts Ordering (Advisory)
+            Predictive Parts Ordering
           </div>
           <div className="page-subtitle">
-            AI suggests a parts-ordering plan based on stock levels, lead times, and recent work orders. Advisory only — no auto-procurement.
+            AI creates a parts-ordering plan, can create draft procurement orders, and can dispatch orders when the procurement connector is configured.
           </div>
         </div>
       </div>
@@ -71,6 +76,14 @@ const PredictivePartsOrdering = () => {
             <label style={labelStyle}>Lookahead (days)</label>
             <input type="number" value={lookahead} onChange={(e) => setLookahead(e.target.value)} style={inputStyle} />
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#cbd5e1', paddingBottom: 10 }}>
+            <input type="checkbox" checked={createOrders} onChange={(e) => setCreateOrders(e.target.checked)} />
+            Create draft orders
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#cbd5e1', paddingBottom: 10 }}>
+            <input type="checkbox" checked={dispatchOrders} onChange={(e) => setDispatchOrders(e.target.checked)} disabled={!createOrders} />
+            Dispatch to procurement
+          </label>
           <button type="submit" className="btn-primary" disabled={loading}>
             <FiPlay size={14} /> {loading ? 'Planning...' : 'Generate Plan'}
           </button>
@@ -128,8 +141,22 @@ const PredictivePartsOrdering = () => {
             ))} />
           )}
 
-          {parsed.disclaimer && (
-            <div style={{ fontSize: 11, color: '#607d8b', fontStyle: 'italic', marginTop: 8 }}>{parsed.disclaimer}</div>
+          {procurementOrders.length > 0 && (
+            <Section title={`Procurement Orders Created (${procurementOrders.length})`} color="#8fd19e" rows={procurementOrders.map((order) => (
+              <div key={order.id} style={{ padding: '10px 0', borderBottom: '1px solid #1e2d3d' }}>
+                <div style={{ color: '#fff', fontWeight: 700 }}>Order #{order.id} · Part {order.spare_part_id}</div>
+                <div style={{ color: '#8fa1b3', fontSize: 12 }}>
+                  {order.supplier || 'Supplier TBD'} · qty {order.quantity} · ${Number(order.estimated_cost || 0).toLocaleString()} · {order.dispatch_status || order.status}
+                </div>
+                {order.dispatch_error && <div style={{ color: '#ff8a8a', fontSize: 12, marginTop: 4 }}>{order.dispatch_error}</div>}
+              </div>
+            ))} />
+          )}
+
+          {parsed.procurement_controls?.length > 0 && (
+            <Section title="Procurement Controls" color="#8fa1b3" rows={parsed.procurement_controls.map((control, i) => (
+              <div key={i} style={{ padding: '6px 0', color: '#cbd5e1', fontSize: 13 }}>{control}</div>
+            ))} />
           )}
         </>
       )}

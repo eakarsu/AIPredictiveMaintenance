@@ -261,3 +261,176 @@ INSERT INTO reports (title, type, description, parameters, generated_by, file_ur
 ('Compliance Audit Report', 'compliance', 'Annual compliance audit for maintenance procedures', '{"year": "2025", "standards": ["ISO 55001", "OSHA"]}', 'Jennifer Lee', '/reports/compliance-2025.pdf', 'completed'),
 ('AI Prediction Accuracy Report', 'ai_performance', 'Assessment of AI prediction model accuracy', '{"period": "2025-H2", "models": ["failure_prediction", "anomaly_detection"]}', 'Lisa Wang', NULL, 'in_progress'),
 ('Budget Forecast - Q2 2026', 'budget_forecast', 'Maintenance budget forecast for Q2 2026', '{"quarter": "Q2-2026", "include_contingency": true}', 'Patricia Anderson', NULL, 'pending');
+
+-- Feature Expansion Plan: Asset Registry
+INSERT INTO asset_hierarchy (equipment_id, parent_equipment_id, site, area, production_line, asset_path)
+SELECT id, NULL, 'Main Factory',
+       CASE WHEN id % 5 = 0 THEN 'Utilities' WHEN id % 5 = 1 THEN 'Building A' WHEN id % 5 = 2 THEN 'Building B' WHEN id % 5 = 3 THEN 'Building C' ELSE 'Building D' END,
+       CASE WHEN id % 4 = 0 THEN 'Line 4' WHEN id % 4 = 1 THEN 'Machining Line' WHEN id % 4 = 2 THEN 'Assembly Line' ELSE 'Process Line' END,
+       'Main Factory / ' || location || ' / ' || name
+FROM equipment;
+
+INSERT INTO asset_criticality (equipment_id, criticality_score, downtime_cost_per_hour, safety_impact, production_impact, risk_category, review_notes)
+SELECT id, 55 + ((id * 3) % 40), 1200 + (id * 450),
+       CASE WHEN id IN (3,6,10,13) THEN 'high' ELSE 'medium' END,
+       CASE WHEN health_score < 75 THEN 'critical' WHEN health_score < 88 THEN 'high' ELSE 'medium' END,
+       CASE WHEN health_score < 75 THEN 'critical_asset' ELSE 'production_asset' END,
+       'Criticality model considers safety exposure, production bottleneck, downtime cost, and redundancy.'
+FROM equipment;
+
+INSERT INTO asset_warranty (equipment_id, warranty_provider, contract_number, start_date, end_date, coverage_details, claim_status)
+SELECT id, manufacturer || ' Service', 'WR-' || LPAD(id::text, 5, '0'), install_date, install_date + INTERVAL '7 years',
+       'Coverage includes major components, remote diagnostics, and priority field service subject to operating limits.',
+       CASE WHEN install_date + INTERVAL '7 years' < CURRENT_DATE THEN 'expired' ELSE 'active' END
+FROM equipment;
+
+-- Feature Expansion Plan: Sensor Ingestion
+INSERT INTO sensor_ingestion_batches (source_system, batch_type, reading_count, accepted_count, rejected_count, status, started_at, completed_at) VALUES
+('AWS IoT Core', 'stream', 1250, 1238, 12, 'processed', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '5 hours 58 minutes'),
+('Azure IoT Hub', 'batch', 980, 970, 10, 'processed', NOW() - INTERVAL '5 hours', NOW() - INTERVAL '4 hours 57 minutes'),
+('MQTT Gateway A', 'stream', 1430, 1411, 19, 'quality_review', NOW() - INTERVAL '4 hours', NOW() - INTERVAL '3 hours 58 minutes'),
+('Historian Import', 'batch', 760, 760, 0, 'processed', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '2 hours 55 minutes'),
+('Edge Gateway B', 'stream', 1188, 1175, 13, 'processed', NOW() - INTERVAL '2 hours', NOW() - INTERVAL '1 hour 58 minutes'),
+('PLC Collector', 'batch', 640, 631, 9, 'processed', NOW() - INTERVAL '90 minutes', NOW() - INTERVAL '86 minutes'),
+('SCADA Export', 'batch', 820, 810, 10, 'processed', NOW() - INTERVAL '75 minutes', NOW() - INTERVAL '70 minutes'),
+('OPC-UA Bridge', 'stream', 1320, 1304, 16, 'quality_review', NOW() - INTERVAL '60 minutes', NOW() - INTERVAL '58 minutes'),
+('Wireless Sensor Mesh', 'stream', 905, 887, 18, 'processed', NOW() - INTERVAL '45 minutes', NOW() - INTERVAL '42 minutes'),
+('Vibration Edge Node', 'stream', 1505, 1490, 15, 'processed', NOW() - INTERVAL '30 minutes', NOW() - INTERVAL '28 minutes'),
+('Energy Meter Gateway', 'batch', 530, 526, 4, 'processed', NOW() - INTERVAL '25 minutes', NOW() - INTERVAL '22 minutes'),
+('Runtime Counter Import', 'batch', 460, 455, 5, 'processed', NOW() - INTERVAL '20 minutes', NOW() - INTERVAL '18 minutes'),
+('Error Code Collector', 'stream', 300, 292, 8, 'processed', NOW() - INTERVAL '15 minutes', NOW() - INTERVAL '14 minutes'),
+('Pressure Sensor Gateway', 'stream', 710, 705, 5, 'processed', NOW() - INTERVAL '10 minutes', NOW() - INTERVAL '9 minutes'),
+('Temperature Sensor Gateway', 'stream', 690, 681, 9, 'processed', NOW() - INTERVAL '5 minutes', NOW() - INTERVAL '4 minutes');
+
+INSERT INTO sensor_quality_events (batch_id, sensor_id, event_type, severity, message)
+SELECT b.id, ((b.id - 1) % 21) + 1,
+       CASE WHEN b.id % 4 = 0 THEN 'missing_timestamp' WHEN b.id % 4 = 1 THEN 'out_of_range' WHEN b.id % 4 = 2 THEN 'duplicate_reading' ELSE 'stale_sensor' END,
+       CASE WHEN b.rejected_count > 15 THEN 'high' WHEN b.rejected_count > 8 THEN 'medium' ELSE 'low' END,
+       'Quality event detected during ingestion validation; affected readings were quarantined or corrected.'
+FROM sensor_ingestion_batches b;
+
+-- Feature Expansion Plan: Anomaly Detection
+INSERT INTO anomaly_events (equipment_id, sensor_id, anomaly_type, severity, score, detected_at, status, summary)
+SELECT s.equipment_id, s.id,
+       CASE WHEN s.type = 'vibration' THEN 'vibration_outlier' WHEN s.type = 'temperature' THEN 'thermal_drift' WHEN s.type = 'pressure' THEN 'pressure_breach' ELSE 'pattern_shift' END,
+       CASE WHEN s.status = 'warning' THEN 'high' WHEN s.last_reading > COALESCE(s.max_threshold, s.last_reading + 1) * 0.9 THEN 'medium' ELSE 'low' END,
+       60 + ((s.id * 4) % 38),
+       COALESCE(s.last_reading_at, NOW()),
+       CASE WHEN s.status = 'warning' THEN 'investigating' ELSE 'open' END,
+       'Detected anomaly using threshold, drift, and correlated sensor checks.'
+FROM sensors s
+WHERE s.id <= 15;
+
+INSERT INTO anomaly_explanations (anomaly_event_id, explanation, evidence, confidence, recommended_action)
+SELECT id,
+       'Sensor behavior deviated from recent baseline and correlated with asset health or operating condition changes.',
+       'Evidence includes last reading, threshold proximity, recent alert context, and historical failure signatures.',
+       72 + (id % 20),
+       'Review sensor trend, inspect related component, and decide whether to create a work order.'
+FROM anomaly_events;
+
+-- Feature Expansion Plan: Predictive Maintenance Scheduling
+INSERT INTO predictive_schedule_recommendations (equipment_id, recommended_window_start, recommended_window_end, failure_probability, priority, labor_hours, required_parts, recommendation, status)
+SELECT id,
+       NOW() + (id * INTERVAL '2 days'),
+       NOW() + (id * INTERVAL '2 days') + INTERVAL '4 hours',
+       LEAST(95, 25 + ((100 - health_score)::int)),
+       CASE WHEN health_score < 75 THEN 'critical' WHEN health_score < 88 THEN 'high' ELSE 'medium' END,
+       2 + (id % 8),
+       CASE WHEN type ILIKE '%CNC%' THEN 'Spindle Bearing Set, Hydraulic Oil' WHEN type = 'Press' THEN 'Hydraulic Cylinder Seal Kit' WHEN type = 'Compressor' THEN 'Compressor Oil Filter' ELSE 'Standard PM kit' END,
+       'Recommended maintenance window balances failure probability, labor capacity, production impact, and parts availability.',
+       CASE WHEN health_score < 75 THEN 'ready_to_schedule' ELSE 'proposed' END
+FROM equipment;
+
+INSERT INTO maintenance_window_constraints (recommendation_id, constraint_type, description, severity)
+SELECT id,
+       CASE WHEN id % 4 = 0 THEN 'production_blackout' WHEN id % 4 = 1 THEN 'labor_capacity' WHEN id % 4 = 2 THEN 'parts_availability' ELSE 'safety_lockout' END,
+       'Constraint considered by scheduler before committing the recommended maintenance window.',
+       CASE WHEN id % 5 = 0 THEN 'critical' WHEN id % 3 = 0 THEN 'high' ELSE 'medium' END
+FROM predictive_schedule_recommendations;
+
+-- Feature Expansion Plan: Work Order Generation
+INSERT INTO generated_work_orders (source_alert_id, recommendation_id, work_order_id, equipment_id, generation_reason, priority, status, parts_context)
+SELECT a.id, psr.id, wo.id, a.equipment_id,
+       'Generated from active alert and predictive schedule recommendation.',
+       a.severity,
+       CASE WHEN wo.id IS NULL THEN 'draft' ELSE 'linked' END,
+       psr.required_parts
+FROM alerts a
+LEFT JOIN predictive_schedule_recommendations psr ON psr.equipment_id = a.equipment_id
+LEFT JOIN work_orders wo ON wo.equipment_id = a.equipment_id
+WHERE a.id <= 15;
+
+INSERT INTO work_order_checklists (generated_work_order_id, step_number, checklist_item, required, status)
+SELECT id, 1, 'Verify lockout/tagout and safe asset state before work begins.', TRUE, 'pending' FROM generated_work_orders
+UNION ALL
+SELECT id, 2, 'Inspect predicted failure component and capture readings/photos.', TRUE, 'pending' FROM generated_work_orders
+UNION ALL
+SELECT id, 3, 'Replace or adjust recommended parts and record actual condition.', TRUE, 'pending' FROM generated_work_orders;
+
+-- Feature Expansion Plan: Parts Inventory Forecasting
+INSERT INTO parts_forecasts (spare_part_id, forecast_period, forecast_quantity, confidence, stockout_risk, vendor_lead_days)
+SELECT id, 'next_30_days', GREATEST(1, min_quantity + (id % 6)), 70 + (id % 25),
+       CASE WHEN quantity < min_quantity THEN 'critical' WHEN quantity <= min_quantity + 1 THEN 'high' ELSE 'medium' END,
+       5 + (id % 18)
+FROM spare_parts
+WHERE id <= 15;
+
+INSERT INTO parts_reorder_recommendations (forecast_id, recommended_quantity, reorder_point, urgency, estimated_cost, rationale, status)
+SELECT pf.id,
+       GREATEST(pf.forecast_quantity, sp.min_quantity * 2),
+       sp.min_quantity,
+       pf.stockout_risk,
+       GREATEST(pf.forecast_quantity, sp.min_quantity * 2) * sp.unit_cost,
+       'Recommendation considers forecast demand, current inventory, minimum quantity, vendor lead time, and stockout risk.',
+       CASE WHEN pf.stockout_risk IN ('critical', 'high') THEN 'recommended' ELSE 'watchlist' END
+FROM parts_forecasts pf
+JOIN spare_parts sp ON sp.id = pf.spare_part_id;
+
+-- Feature Expansion Plan: Technician Mobile Checklist
+INSERT INTO technician_checklists (work_order_id, technician, mobile_status, offline_sync_status, signature_name, signed_at, notes)
+SELECT id, assigned_to,
+       CASE WHEN status = 'completed' THEN 'completed' WHEN status = 'in_progress' THEN 'in_progress' ELSE 'assigned' END,
+       CASE WHEN id % 5 = 0 THEN 'queued_offline' ELSE 'synced' END,
+       CASE WHEN status = 'completed' THEN assigned_to ELSE NULL END,
+       CASE WHEN status = 'completed' THEN completed_at ELSE NULL END,
+       'Mobile checklist supports photo proof, notes, signature, and offline sync.'
+FROM work_orders;
+
+INSERT INTO technician_checklist_items (checklist_id, step_number, task, status, photo_required, notes, completed_at)
+SELECT id, 1, 'Confirm asset ID, safety state, and work order scope.', CASE WHEN mobile_status = 'completed' THEN 'completed' ELSE 'pending' END, FALSE, 'Asset and scope verification step.', signed_at FROM technician_checklists
+UNION ALL
+SELECT id, 2, 'Capture before-service photo and diagnostic reading.', CASE WHEN mobile_status = 'completed' THEN 'completed' ELSE 'pending' END, TRUE, 'Photo proof required for field evidence.', signed_at FROM technician_checklists
+UNION ALL
+SELECT id, 3, 'Record corrective action, parts used, and final reading.', CASE WHEN mobile_status = 'completed' THEN 'completed' ELSE 'pending' END, TRUE, 'Completion notes feed maintenance history.', signed_at FROM technician_checklists;
+
+INSERT INTO field_uploads (checklist_id, upload_type, file_url, caption)
+SELECT id, CASE WHEN id % 2 = 0 THEN 'photo' ELSE 'signature' END,
+       '/field-uploads/checklist-' || id || '.jpg',
+       'Field evidence captured from technician mobile workflow.'
+FROM technician_checklists
+WHERE id <= 15;
+
+INSERT INTO push_subscriptions (user_id, provider, device_token, platform)
+SELECT id,
+       CASE WHEN id % 2 = 0 THEN 'onesignal' ELSE 'firebase' END,
+       'demo-device-token-' || id,
+       CASE WHEN id % 3 = 0 THEN 'android' WHEN id % 3 = 1 THEN 'ios' ELSE 'web' END
+FROM users
+WHERE id <= 15;
+
+INSERT INTO procurement_orders (recommendation_id, spare_part_id, supplier, quantity, estimated_cost, status, created_by)
+SELECT prr.id, pf.spare_part_id, sp.supplier, prr.recommended_quantity, prr.estimated_cost,
+       CASE WHEN prr.urgency IN ('critical', 'high') THEN 'ready_to_dispatch' ELSE 'draft' END,
+       'system'
+FROM parts_reorder_recommendations prr
+JOIN parts_forecasts pf ON pf.id = prr.forecast_id
+JOIN spare_parts sp ON sp.id = pf.spare_part_id
+WHERE prr.id <= 15;
+
+INSERT INTO integration_events (integration_type, provider, operation, request_payload, response_payload, status)
+VALUES
+('cmms', 'maximo', 'sync_work_orders', '{"mode":"seed"}', '{"message":"Ready when credentials are configured"}', 'configured_pending'),
+('iot', 'aws_iot', 'ingest_batch', '{"mode":"seed"}', '{"message":"Webhook ingestion enabled"}', 'configured_pending'),
+('push', 'onesignal', 'send_notification', '{"mode":"seed"}', '{"message":"Ready when credentials are configured"}', 'configured_pending'),
+('procurement', 'generic_http', 'dispatch_order', '{"mode":"seed"}', '{"message":"Ready when PROCUREMENT_API_URL is configured"}', 'configured_pending');

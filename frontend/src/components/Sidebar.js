@@ -5,7 +5,7 @@ import {
   FiAlertTriangle, FiClipboard, FiSearch, FiHeart, FiZap,
   FiPackage, FiFileText, FiDollarSign, FiBarChart2, FiUsers,
   FiChevronLeft, FiChevronRight, FiSettings, FiClock, FiGitBranch,
-  FiRadio, FiPieChart, FiShoppingCart, FiLayout
+  FiRadio, FiPieChart, FiShoppingCart, FiLayout, FiCloud
 } from 'react-icons/fi';
 
 const navItems = [
@@ -39,6 +39,16 @@ const navItems = [
   { path: '/users', label: 'Users', icon: FiUsers },
   { path: '/custom-views', label: 'PdM Views', icon: FiLayout },
   { path: '/lubrication-route-compliance', label: 'Lube Compliance', icon: FiClipboard },
+  { path: '/asset-registry', label: 'Asset Registry+', icon: FiCpu },
+  { path: '/sensor-ingestion', label: 'Sensor Ingestion', icon: FiRadio },
+  { path: '/anomaly-events', label: 'Anomaly Events', icon: FiZap },
+  { path: '/predictive-scheduling', label: 'Predictive Scheduling', icon: FiCalendar },
+  { path: '/generated-work-orders', label: 'Generated WOs', icon: FiClipboard },
+  { path: '/parts-forecasting', label: 'Parts Forecasting', icon: FiPackage },
+  { path: '/downtime-roi-metrics', label: 'Downtime & ROI', icon: FiDollarSign },
+  { path: '/technician-checklists', label: 'Tech Checklists', icon: FiFileText },
+  { path: '/live-anomaly-stream', label: 'Live Anomalies', icon: FiRadio },
+  { path: '/integration-center', label: 'Integrations', icon: FiCloud },
   // === Batch 06 Gaps & Frontend Mounts ===
   { path: '/cf-agentic-maintenance-orchestration', label: 'Agentic maintenance orchestration', icon: '✨' },
   { path: '/cf-digital-twin-simulation', label: 'Digital twin simulation', icon: '✨' },

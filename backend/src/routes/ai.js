@@ -3,6 +3,11 @@ const router = express.Router();
 const pool = require('../db/pool');
 const { callOpenRouter } = require('../services/aiService');
 const { aiRateLimiter } = require('../middleware/rateLimiter');
+const {
+  compactError,
+  dispatchProcurementOrder,
+  recordIntegrationEvent,
+} = require('../services/integrationService');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1143,30 +1148,46 @@ Return JSON only.`;
 });
 
 // ─── POST /api/ai/predictive-parts-ordering ──────────────────────────────────
-// Audit suggestion #4: predictive parts ordering — ADVISORY ONLY (no
-// procurement integration). Returns an ordering plan with rationales; the
-// user/buyer must execute manually. This is intentionally not wired to any
-// real procurement system.
 router.post('/predictive-parts-ordering', aiRateLimiter, async (req, res) => {
   if (requireKey(res)) return;
   try {
-    const { lead_time_days_buffer = 14, equipment_id, lookahead_days = 90 } = req.body || {};
+    const {
+      lead_time_days_buffer = 14,
+      equipment_id,
+      lookahead_days = 90,
+      create_procurement_orders = false,
+      dispatch_orders = false,
+    } = req.body || {};
 
     let parts = [];
     try {
-      const params = [];
-      let where = '';
-      if (equipment_id) {
-        params.push(equipment_id);
-        where = `WHERE equipment_id = $1 OR (equipment_id IS NULL)`;
-      }
       const r = await pool.query(
-        `SELECT id, part_number, name, quantity_on_hand, minimum_quantity, lead_time_days, unit_cost, equipment_id
-         FROM spare_parts ${where} ORDER BY id LIMIT 500`,
-        params
+        `SELECT sp.id,
+                sp.part_number,
+                sp.name,
+                sp.quantity,
+                sp.min_quantity,
+                sp.unit_cost,
+                sp.supplier,
+                sp.reorder_status,
+                sp.compatible_equipment,
+                COALESCE(MAX(pf.vendor_lead_days), 14) AS lead_time_days,
+                MAX(pf.forecast_quantity) AS forecast_quantity,
+                MAX(pf.stockout_risk) AS stockout_risk
+         FROM spare_parts sp
+         LEFT JOIN parts_forecasts pf ON pf.spare_part_id = sp.id
+         GROUP BY sp.id
+         ORDER BY sp.id
+         LIMIT 500`
       );
-      parts = r.rows;
-    } catch (_) {}
+      parts = r.rows.filter((part) => {
+        if (!equipment_id) return true;
+        const compatible = String(part.compatible_equipment || '').toLowerCase();
+        return compatible.includes(String(equipment_id).toLowerCase()) || compatible.includes('all');
+      });
+    } catch (error) {
+      console.warn('predictive-parts-ordering parts query failed:', error.message);
+    }
 
     let recentWO = [];
     try {
@@ -1176,23 +1197,25 @@ router.post('/predictive-parts-ordering', aiRateLimiter, async (req, res) => {
          ORDER BY created_at DESC LIMIT 200`
       );
       recentWO = r.rows;
-    } catch (_) {}
+    } catch (_) {
+      recentWO = [];
+    }
 
     const partSummary = parts
       .map(
         (p) =>
-          `id=${p.id} pn=${p.part_number || ''} name=${p.name || ''} on_hand=${p.quantity_on_hand} min=${p.minimum_quantity || 0} lead_days=${p.lead_time_days || '?'} unit_cost=${p.unit_cost || '?'} eq=${p.equipment_id || 'shared'}`
+          `id=${p.id} pn=${p.part_number || ''} name=${p.name || ''} on_hand=${p.quantity} min=${p.min_quantity || 0} lead_days=${p.lead_time_days || '?'} forecast=${p.forecast_quantity || '?'} stockout_risk=${p.stockout_risk || 'unknown'} unit_cost=${p.unit_cost || '?'} supplier=${p.supplier || 'unknown'}`
       )
       .join('\n');
 
-    const systemPrompt = `You are a predictive spare-parts planner. Given current stock, lead times, and recent work-order activity, return an ADVISORY ordering plan (no actual procurement). Return ONLY valid JSON:
+    const systemPrompt = `You are a predictive spare-parts planner. Given current stock, lead times, and recent work-order activity, return a procurement-ready ordering plan. Return ONLY valid JSON:
 {
   "order_now": [{"part_id": 0, "part_number": "string", "suggested_qty": 0, "rationale": "string", "urgency": "low|medium|high|critical"}],
   "order_soon": [{"part_id": 0, "part_number": "string", "suggested_qty": 0, "rationale": "string", "by_date": "YYYY-MM-DD"}],
   "watchlist": [{"part_id": 0, "rationale": "string"}],
   "estimated_total_spend": 0,
   "assumptions": ["string"],
-  "disclaimer": "Advisory only. Verify with procurement before placing orders."
+  "procurement_controls": ["string"]
 }`;
     const prompt = `Lead-time buffer (days): ${lead_time_days_buffer}
 Lookahead window (days): ${lookahead_days}
@@ -1207,8 +1230,58 @@ Return JSON only.`;
     const aiResponse = await callOpenRouter(prompt, systemPrompt);
     const parsed = parseAIJson(aiResponse);
 
+    const procurementOrders = [];
     const userId = req.user?.id || req.user?.userId;
-    await saveAIPrediction(userId, 'predictive-parts-ordering', equipment_id || null, parsed);
+    if (create_procurement_orders && parsed?.order_now?.length) {
+      for (const recommendation of parsed.order_now) {
+        const partId = Number(recommendation.part_id);
+        const part = parts.find((item) => Number(item.id) === partId);
+        if (!part) continue;
+        const quantity = Math.max(1, Number(recommendation.suggested_qty) || Number(part.min_quantity) || 1);
+        const estimatedCost = Number(part.unit_cost || 0) * quantity;
+        const inserted = await pool.query(
+          `INSERT INTO procurement_orders (spare_part_id, supplier, quantity, estimated_cost, status, created_by)
+           VALUES ($1,$2,$3,$4,$5,$6)
+           RETURNING *`,
+          [
+            part.id,
+            part.supplier || 'Preferred supplier',
+            quantity,
+            estimatedCost,
+            dispatch_orders ? 'ready_to_dispatch' : 'draft',
+            req.user?.email || req.user?.username || userId || 'system',
+          ]
+        );
+        const order = inserted.rows[0];
+        if (dispatch_orders) {
+          try {
+            const dispatched = await dispatchProcurementOrder(order);
+            const updated = await pool.query(
+              `UPDATE procurement_orders
+               SET status = 'dispatched',
+                   external_order_id = $1,
+                   dispatch_response = $2,
+                   dispatched_at = NOW()
+               WHERE id = $3
+               RETURNING *`,
+              [dispatched.externalOrderId, JSON.stringify(dispatched.response), order.id]
+            );
+            await recordIntegrationEvent(pool, 'procurement', dispatched.provider, 'dispatch_order', dispatched.payload, dispatched.response, 'sent', null);
+            procurementOrders.push({ ...updated.rows[0], dispatch_status: 'sent' });
+          } catch (dispatchError) {
+            await recordIntegrationEvent(pool, 'procurement', 'generic_http', 'dispatch_order', { order_id: order.id }, dispatchError.response || {}, 'failed', compactError(dispatchError));
+            procurementOrders.push({ ...order, dispatch_status: 'failed', dispatch_error: compactError(dispatchError) });
+          }
+        } else {
+          procurementOrders.push(order);
+        }
+      }
+    }
+
+    await saveAIPrediction(userId, 'predictive-parts-ordering', equipment_id || null, {
+      analysis: parsed,
+      procurement_orders: procurementOrders,
+    });
 
     res.json({
       success: true,
@@ -1216,8 +1289,11 @@ Return JSON only.`;
         parts_evaluated: parts.length,
         equipment_id: equipment_id || null,
         analysis: parsed || aiResponse,
+        procurement_orders: procurementOrders,
       },
-      message: 'Predictive parts-ordering plan generated (advisory only)',
+      message: procurementOrders.length
+        ? 'Predictive parts plan generated and procurement orders created'
+        : 'Predictive parts plan generated',
     });
   } catch (error) {
     console.error('predictive-parts-ordering error:', error);
@@ -1226,4 +1302,3 @@ Return JSON only.`;
 });
 
 module.exports = router;
-

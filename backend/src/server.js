@@ -22,6 +22,11 @@ const reportsRoutes = require('./routes/reports');
 const dashboardRoutes = require('./routes/dashboard');
 const aiRoutes = require('./routes/ai');
 const sensorIngestRoutes = require('./routes/sensorIngest');
+const cmmsRoutes = require('./routes/cmms');
+const iotRoutes = require('./routes/iot');
+const procurementRoutes = require('./routes/procurement');
+const pushRoutes = require('./routes/push');
+const streamsRoutes = require('./routes/streams');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -55,6 +60,12 @@ app.use('/api/reports', auth, reportsRoutes);
 app.use('/api/dashboard', auth, dashboardRoutes);
 app.use('/api/ai', auth, aiRoutes);
 app.use('/api/equipment', auth, sensorIngestRoutes);
+app.use('/api/feature-expansion', auth, require('./routes/featureExpansion'));
+app.use('/api/cmms', auth, cmmsRoutes);
+app.use('/api/procurement', auth, procurementRoutes);
+app.use('/api/push', auth, pushRoutes);
+app.use('/api/streams', streamsRoutes);
+app.use('/api/iot', iotRoutes);
 
 // Custom Views (4 endpoints) — mounted BEFORE 404 handler
 app.use('/api/custom-views', auth, require('./routes/customViews'));

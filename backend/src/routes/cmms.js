@@ -1,111 +1,145 @@
-// Apply pass 5: CMMS integration backlog.
-//
-// Category: NEEDS-CREDS.
-// Required env vars (per provider, only one provider needs to be set):
-//   IBM Maximo:  MAXIMO_BASE_URL, MAXIMO_API_KEY  (or MAXIMO_USER + MAXIMO_PASSWORD)
-//   SAP PM:      SAP_PM_BASE_URL, SAP_PM_API_KEY
-//
-// We do NOT make outbound HTTP from this stub. Instead, we expose:
-//  - GET /api/cmms/_/providers        — provider availability + missing env list
-//  - POST /api/cmms/sync/work-orders  — 503 if no creds; otherwise records a
-//      `cmms_sync_log` entry (no actual sync — flagged for follow-up).
-//  - POST /api/cmms/export/work-order/:id — export a local WO to a CMMS payload
-//      shape; returns 503 if creds missing, else returns the payload that would
-//      be POSTed (no network call).
-
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
+const {
+  compactError,
+  providerStatus,
+  recordIntegrationEvent,
+  sendWorkOrderToCmms,
+  workOrderToMaximoPayload,
+  workOrderToSapPayload,
+} = require('../services/integrationService');
 
 let tableReady = false;
 async function ensureTable() {
   if (tableReady) return;
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS cmms_sync_log (
-        id SERIAL PRIMARY KEY,
-        provider VARCHAR(40) NOT NULL,
-        operation VARCHAR(40) NOT NULL,
-        payload JSONB,
-        status VARCHAR(20) DEFAULT 'pending',
-        error TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    tableReady = true;
-  } catch (e) { /* schema-tolerant */ }
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS cmms_sync_log (
+      id SERIAL PRIMARY KEY,
+      provider VARCHAR(40) NOT NULL,
+      operation VARCHAR(40) NOT NULL,
+      payload JSONB,
+      status VARCHAR(40) DEFAULT 'pending',
+      error TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  tableReady = true;
 }
 
-function providerStatus() {
-  const maximo = !!process.env.MAXIMO_BASE_URL && !!(process.env.MAXIMO_API_KEY || (process.env.MAXIMO_USER && process.env.MAXIMO_PASSWORD));
-  const sap = !!process.env.SAP_PM_BASE_URL && !!process.env.SAP_PM_API_KEY;
-  return {
-    maximo,
-    sap_pm: sap,
-    available: maximo || sap,
-    missing: {
-      maximo: ['MAXIMO_BASE_URL', 'MAXIMO_API_KEY'].filter(k => !process.env[k]),
-      sap_pm: ['SAP_PM_BASE_URL', 'SAP_PM_API_KEY'].filter(k => !process.env[k])
-    }
-  };
+function selectedProvider(requested) {
+  const status = providerStatus().cmms;
+  if (requested && ['maximo', 'sap_pm'].includes(requested)) return requested;
+  if (status.maximo) return 'maximo';
+  if (status.sap_pm) return 'sap_pm';
+  return requested || 'unconfigured';
 }
 
-router.get('/_/providers', (req, res) => res.json({ success: true, data: providerStatus() }));
+async function logSync(provider, operation, payload, status, error) {
+  await ensureTable();
+  const result = await pool.query(
+    `INSERT INTO cmms_sync_log (provider, operation, payload, status, error)
+     VALUES ($1,$2,$3,$4,$5)
+     RETURNING *`,
+    [provider, operation, JSON.stringify(payload || {}), status, error || null]
+  );
+  return result.rows[0];
+}
+
+router.get('/_/providers', (req, res) => {
+  res.json({ success: true, data: providerStatus().cmms });
+});
 
 router.post('/sync/work-orders', async (req, res) => {
-  await ensureTable();
-  const status = providerStatus();
+  const status = providerStatus().cmms;
   if (!status.available) {
-    return res.status(503).json({ success: false, error: 'No CMMS provider configured', missing: 'MAXIMO_BASE_URL or SAP_PM_BASE_URL' });
+    return res.status(503).json({
+      success: false,
+      message: 'No CMMS provider configured',
+      missing: status.missing,
+    });
   }
+
+  const provider = selectedProvider(req.body?.provider);
+  if (!status[provider]) {
+    return res.status(503).json({ success: false, message: `${provider} is not configured`, missing: status.missing[provider] });
+  }
+
   try {
-    const provider = status.maximo ? 'maximo' : 'sap_pm';
-    const r = await pool.query(
-      "INSERT INTO cmms_sync_log (provider, operation, payload, status) VALUES ($1, 'sync_work_orders', $2, 'queued') RETURNING *",
-      [provider, JSON.stringify({ note: 'Sync queued. Outbound HTTP deferred — wire your provider SDK to drain queued rows.' })]
+    const workOrders = await pool.query(
+      `SELECT * FROM work_orders
+       WHERE status IN ('open', 'in_progress', 'scheduled')
+       ORDER BY created_at DESC
+       LIMIT $1`,
+      [Number(req.body?.limit) || 25]
     );
-    res.json({ success: true, data: r.rows[0] });
-  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+
+    const results = [];
+    for (const workOrder of workOrders.rows) {
+      try {
+        const sent = await sendWorkOrderToCmms(workOrder, provider);
+        await logSync(provider, 'sync_work_orders', sent.payload, 'sent', null);
+        await recordIntegrationEvent(pool, 'cmms', provider, 'sync_work_orders', sent.payload, sent.response, 'sent', null);
+        results.push({ work_order_id: workOrder.id, status: 'sent', response: sent.response });
+      } catch (error) {
+        const message = compactError(error);
+        await logSync(provider, 'sync_work_orders', { work_order_id: workOrder.id }, 'failed', message);
+        await recordIntegrationEvent(pool, 'cmms', provider, 'sync_work_orders', { work_order_id: workOrder.id }, error.response || {}, 'failed', message);
+        results.push({ work_order_id: workOrder.id, status: 'failed', error: message });
+      }
+    }
+
+    res.json({
+      success: true,
+      provider,
+      count: results.length,
+      sent: results.filter((item) => item.status === 'sent').length,
+      failed: results.filter((item) => item.status === 'failed').length,
+      data: results,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: compactError(error) });
+  }
 });
 
 router.post('/export/work-order/:id', async (req, res) => {
-  const status = providerStatus();
-  if (!status.available) {
-    return res.status(503).json({ success: false, error: 'No CMMS provider configured', missing: 'MAXIMO_BASE_URL or SAP_PM_BASE_URL' });
-  }
+  const status = providerStatus().cmms;
+  const provider = selectedProvider(req.body?.provider || req.query?.provider);
+
   try {
-    const r = await pool.query('SELECT * FROM work_orders WHERE id = $1', [req.params.id]).catch(() => ({ rows: [] }));
-    if (!r.rows.length) return res.status(404).json({ success: false, error: 'work order not found' });
-    const wo = r.rows[0];
-    // Provider-specific payload shapes. Real SDK call is intentionally NOT made.
-    const provider = status.maximo ? 'maximo' : 'sap_pm';
-    const payload = provider === 'maximo'
-      ? {
-          wonum: `LOCAL-${wo.id}`,
-          description: wo.description || wo.title,
-          worktype: wo.priority === 'critical' ? 'EM' : 'PM',
-          status: wo.status === 'open' ? 'WSCH' : 'INPRG',
-          asset_id: wo.equipment_id,
-          targstartdate: wo.scheduled_date
-        }
-      : {
-          OrderNumber: `LOCAL-${wo.id}`,
-          ShortText: wo.description || wo.title,
-          OrderType: 'PM01',
-          SystemStatus: wo.status,
-          FunctionalLocation: wo.equipment_id,
-          BasicStartDate: wo.scheduled_date
-        };
-    res.json({ success: true, provider, payload, note: 'Returned payload only. Provider HTTP call deferred.' });
-  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+    const result = await pool.query('SELECT * FROM work_orders WHERE id = $1', [req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ success: false, message: 'Work order not found' });
+    const workOrder = result.rows[0];
+    const payload = provider === 'sap_pm' ? workOrderToSapPayload(workOrder) : workOrderToMaximoPayload(workOrder);
+
+    if (req.query.dry_run === 'true' || req.body?.dry_run === true) {
+      return res.json({ success: true, provider, payload, dry_run: true });
+    }
+
+    if (!status.available || !status[provider]) {
+      return res.status(503).json({
+        success: false,
+        message: `${provider} is not configured`,
+        missing: status.missing[provider] || status.missing,
+        payload,
+      });
+    }
+
+    const sent = await sendWorkOrderToCmms(workOrder, provider);
+    await logSync(provider, 'export_work_order', sent.payload, 'sent', null);
+    await recordIntegrationEvent(pool, 'cmms', provider, 'export_work_order', sent.payload, sent.response, 'sent', null);
+    res.json({ success: true, provider, payload: sent.payload, response: sent.response });
+  } catch (error) {
+    const message = compactError(error);
+    await recordIntegrationEvent(pool, 'cmms', provider, 'export_work_order', { work_order_id: req.params.id }, error.response || {}, 'failed', message);
+    res.status(error.status || 500).json({ success: false, message });
+  }
 });
 
 router.get('/sync-log', async (req, res) => {
   await ensureTable();
-  try {
-    const r = await pool.query('SELECT * FROM cmms_sync_log ORDER BY created_at DESC LIMIT 100');
-    res.json({ success: true, data: r.rows });
-  } catch (e) { res.json({ success: true, data: [] }); }
+  const result = await pool.query('SELECT * FROM cmms_sync_log ORDER BY created_at DESC LIMIT 100');
+  res.json({ success: true, data: result.rows });
 });
 
 module.exports = router;

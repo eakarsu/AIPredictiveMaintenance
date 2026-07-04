@@ -38,6 +38,9 @@ import LubricationRouteCompliance from './pages/LubricationRouteCompliance';
 import './App.css';
 import MissingFeaturesHub from './pages/MissingFeaturesHub';
 import ProductionReadiness from './pages/ProductionReadiness';
+import FeatureExpansionPage from './pages/FeatureExpansionPage';
+import LiveAnomalyStream from './pages/LiveAnomalyStream';
+import IntegrationCenter from './pages/IntegrationCenter';
 
 // // === Batch 06 Gaps & Frontend Mounts ===
 import CFAgenticMaintenanceOrchestrationPage from './pages/CFAgenticMaintenanceOrchestrationPage';
@@ -112,6 +115,16 @@ const App = () => (
           <Route path="/predictive-parts-ordering" element={<PredictivePartsOrdering />} />
           <Route path="/custom-views" element={<CustomViewsPage />} />
           <Route path="/lubrication-route-compliance" element={<LubricationRouteCompliance />} />
+          <Route path="/asset-registry" element={<FeatureExpansionPage feature="asset-registry" />} />
+          <Route path="/sensor-ingestion" element={<FeatureExpansionPage feature="sensor-ingestion" />} />
+          <Route path="/anomaly-events" element={<FeatureExpansionPage feature="anomaly-events" />} />
+          <Route path="/predictive-scheduling" element={<FeatureExpansionPage feature="predictive-scheduling" />} />
+          <Route path="/generated-work-orders" element={<FeatureExpansionPage feature="generated-work-orders" />} />
+          <Route path="/parts-forecasting" element={<FeatureExpansionPage feature="parts-forecasting" />} />
+          <Route path="/downtime-roi-metrics" element={<FeatureExpansionPage feature="downtime-roi" />} />
+          <Route path="/technician-checklists" element={<FeatureExpansionPage feature="technician-checklists" />} />
+          <Route path="/live-anomaly-stream" element={<LiveAnomalyStream />} />
+          <Route path="/integration-center" element={<IntegrationCenter />} />
         </Route>
       
           {/* // === Batch 06 Gaps & Frontend Mounts === */}
