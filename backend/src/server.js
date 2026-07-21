@@ -5,6 +5,11 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const auth = require('./middleware/auth');
+const { validateRuntime } = require('./governance/runtime');
+const { createProviderGate } = require('./governance/providerGate');
+const governanceRouter = require('./governance/router');
+
+validateRuntime();
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -33,8 +38,10 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000', credentials: true }));
+const allowedOrigins = String(process.env.CORS_ORIGINS || process.env.CLIENT_URL || 'http://localhost:3000').split(',').map((value) => value.trim()).filter(Boolean);
+app.use(cors({ origin: (origin, callback) => !origin || allowedOrigins.includes(origin) ? callback(null, true) : callback(new Error('Origin not allowed by CORS')), credentials: true }));
 app.use(express.json());
+app.use(createProviderGate(['/api/ai', '/api/gap', '/api/cf']));
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -64,8 +71,9 @@ app.use('/api/feature-expansion', auth, require('./routes/featureExpansion'));
 app.use('/api/cmms', auth, cmmsRoutes);
 app.use('/api/procurement', auth, procurementRoutes);
 app.use('/api/push', auth, pushRoutes);
-app.use('/api/streams', streamsRoutes);
-app.use('/api/iot', iotRoutes);
+app.use('/api/streams', auth, streamsRoutes);
+app.use('/api/iot', auth, iotRoutes);
+app.use('/api/governed-maintenance-dispatches', governanceRouter);
 
 // Custom Views (4 endpoints) — mounted BEFORE 404 handler
 app.use('/api/custom-views', auth, require('./routes/customViews'));

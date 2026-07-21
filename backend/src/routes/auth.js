@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../db/pool');
+const { jwtSecret } = require('../config/security');
 
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
@@ -28,7 +29,7 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { id: user.id, email: user.email, name: user.name, role: user.role },
-      process.env.JWT_SECRET || 'default_jwt_secret',
+      jwtSecret(),
       { expiresIn: '24h' }
     );
 
@@ -54,7 +55,7 @@ router.post('/login', async (req, res) => {
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name, role } = req.body;
+    const { email, password, name } = req.body;
 
     if (!email || !password || !name) {
       return res.status(400).json({ success: false, message: 'Email, password, and name are required' });
@@ -68,7 +69,7 @@ router.post('/register', async (req, res) => {
     const password_hash = await bcrypt.hash(password, 10);
     const result = await pool.query(
       'INSERT INTO users (email, password_hash, name, role) VALUES ($1, $2, $3, $4) RETURNING id, email, name, role, created_at',
-      [email, password_hash, name, role || 'technician']
+      [email, password_hash, name, 'technician']
     );
 
     res.status(201).json({
@@ -88,7 +89,7 @@ router.get('/me', (req, res) => {
     const h = req.headers.authorization || '';
     const t = h.startsWith('Bearer ') ? h.slice(7) : h;
     if (!t) return res.status(401).json({ success: false, message: 'No token' });
-    const decoded = jwt.verify(t, process.env.JWT_SECRET || 'default_jwt_secret');
+    const decoded = jwt.verify(t, jwtSecret());
     return res.json({
       success: true,
       data: { id: decoded.id, email: decoded.email, name: decoded.name, role: decoded.role },

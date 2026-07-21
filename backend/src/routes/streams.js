@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const { jwtSecret } = require('../config/security');
 const router = express.Router();
 const pool = require('../db/pool');
 const eventBus = require('../services/eventBus');
@@ -9,7 +10,7 @@ function verifyStreamToken(req, res, next) {
   const token = req.query.token || (authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader);
   if (!token) return res.status(401).json({ success: false, message: 'No token provided' });
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET || 'default_jwt_secret');
+    req.user = jwt.verify(token, jwtSecret());
     next();
   } catch (_) {
     res.status(401).json({ success: false, message: 'Invalid or expired token' });
