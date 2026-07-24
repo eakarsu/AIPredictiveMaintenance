@@ -81,8 +81,8 @@ const Login = () => {
   };
 
   const handleDemo = () => {
-    setEmail('admin@factory.com');
-    setPassword('password123');
+    setEmail(process.env.REACT_APP_DEMO_EMAIL || '');
+    setPassword(process.env.REACT_APP_DEMO_PASSWORD || '');
   };
 
   return (
