@@ -2,6 +2,9 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+set -a
+source "$PROJECT_DIR/.env"
+set +a
 BACKEND_PORT="${BACKEND_PORT:-${SERVER_PORT:-3001}}"
 FRONTEND_PORT="${FRONTEND_PORT:-${CLIENT_PORT:-3000}}"
 CHILD_PIDS=()
@@ -29,7 +32,7 @@ port_free "$FRONTEND_PORT"
 
 (cd "$PROJECT_DIR/backend" && PORT="$BACKEND_PORT" node src/server.js) &
 CHILD_PIDS+=("$!")
-(cd "$PROJECT_DIR/frontend" && PORT="$FRONTEND_PORT" BROWSER=none npm start) &
+(cd "$PROJECT_DIR/frontend" && PORT="$FRONTEND_PORT" BROWSER=none REACT_APP_API_URL="http://127.0.0.1:$BACKEND_PORT/api" npm start) &
 CHILD_PIDS+=("$!")
 
 echo "Predictive maintenance services started without installing, seeding, migrating, or reclaiming ports."

@@ -41,7 +41,7 @@ app.use(helmet());
 const allowedOrigins = String(process.env.CORS_ORIGINS || process.env.CLIENT_URL || 'http://localhost:3000').split(',').map((value) => value.trim()).filter(Boolean);
 app.use(cors({ origin: (origin, callback) => !origin || allowedOrigins.includes(origin) ? callback(null, true) : callback(new Error('Origin not allowed by CORS')), credentials: true }));
 app.use(express.json());
-app.use(createProviderGate(['/api/ai', '/api/gap', '/api/cf']));
+app.use(createProviderGate(['/api/gap', '/api/cf']));
 
 // Health check
 app.get('/api/health', (req, res) => {

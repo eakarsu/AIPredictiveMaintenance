@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../db/pool');
 const { jwtSecret } = require('../config/security');
+const auth = require('../middleware/auth');
 
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
@@ -84,18 +85,20 @@ router.post('/register', async (req, res) => {
 });
 
 // GET /api/auth/me — decode JWT and return user info (added to keep AuthContext.fetchUser happy)
-router.get('/me', (req, res) => {
+router.get('/me', auth, async (req, res) => {
   try {
-    const h = req.headers.authorization || '';
-    const t = h.startsWith('Bearer ') ? h.slice(7) : h;
-    if (!t) return res.status(401).json({ success: false, message: 'No token' });
-    const decoded = jwt.verify(t, jwtSecret());
+    const result = await pool.query(
+      'SELECT id, email, name, role FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    if (!result.rows[0]) return res.status(404).json({ success: false, message: 'User not found' });
     return res.json({
       success: true,
-      data: { id: decoded.id, email: decoded.email, name: decoded.name, role: decoded.role },
+      user: result.rows[0],
+      data: result.rows[0],
     });
   } catch (e) {
-    return res.status(401).json({ success: false, message: 'Invalid token' });
+    return res.status(500).json({ success: false, message: 'Identity lookup failed' });
   }
 });
 
