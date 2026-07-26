@@ -81,6 +81,7 @@ trap cleanup INT TERM EXIT
 require_file "$PROJECT_DIR/.env"
 require_dir "$PROJECT_DIR/backend/node_modules"
 require_dir "$PROJECT_DIR/frontend/node_modules"
+if [ "${NODE_ENV:-development}" != production ] && [ "${ENABLE_DEMO_CREDENTIAL_AUTOFILL:-true}" = true ]; then node "$PROJECT_DIR/backend/src/db/provision-demo-credentials.js"; fi
 port_free "$BACKEND_PORT"
 port_free "$FRONTEND_PORT"
 
